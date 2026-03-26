@@ -13,11 +13,11 @@ app = FastAPI(title="StoryWeaver API", description="AI Agile Ticket Refiner")
 session_service = InMemorySessionService()
 runner = Runner(agent=ticket_refiner_agent, app_name="story-weaver", session_service=session_service)
 
-class BrainDumpRequest(BaseModel):
+class StoryWeaverRequest(BaseModel):
     text: str = "Make the login button pop more and let people use their Google accounts. Also if they enter the wrong password too many times lock them out."
 
 @app.post("/refine", response_model=AgileTicket)
-async def refine_ticket(request: BrainDumpRequest):
+async def refine_ticket(request: StoryWeaverRequest):
     try:
         session = await session_service.create_session(app_name="story-weaver", user_id="user")
         content = types.Content(role="user", parts=[types.Part(text=request.text)])

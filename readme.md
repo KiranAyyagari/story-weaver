@@ -1,93 +1,101 @@
-🧠 StoryWeaver: AI-Powered Agile Ticket Refiner
+# 🧠 StoryWeaver
 
-StoryWeaver is an autonomous AI agent built for the GenAI Academy. It solves a massive pain point in software development: translating vague, unstructured feature requests (Product Manager or Client "brain-dumps") into strictly formatted, developer-ready Agile tickets.
+> AI-powered Agile ticket refiner — turns messy stakeholder brain-dumps into structured, developer-ready tickets.
 
-By leveraging Google's Agent Development Kit (ADK) and Pydantic schemas, this microservice forces the LLM to output predictable, deeply structured JSON containing Acceptance Criteria, Edge Cases, and Complexity Estimates.
+Built with [Google ADK](https://google.github.io/adk-docs/) + Gemini 2.5 Flash, deployed on Google Cloud Run.
 
-🚀 Key Features
+---
 
-Strict JSON Outputs: Uses ADK's output_schema parameter to guarantee a predictable Pydantic structure.
+## How it works
 
-Agile Contextualization: Synthesizes standard User Stories and extrapolates missing Edge Cases automatically.
+```
+POST /refine  →  ADK Runner  →  Gemini 2.5 Flash  →  Structured JSON ticket
+```
 
-Serverless Ready: Containerized and optimized for high-availability deployment on Google Cloud Run.
+1. You send unstructured text (a feature request, a complaint, a brain-dump)
+2. The ADK agent prompts Gemini with a strict Pydantic output schema
+3. You get back a clean, validated Agile ticket every time
 
-🏗️ Architecture Flow
+---
 
-sequenceDiagram
-    participant User/Webhook
-    participant FastAPI as StoryWeaver API
-    participant ADK as Google ADK Agent
-    participant Gemini as Gemini 2.5 Flash
+## Output schema
 
-    User/Webhook->>FastAPI: POST /refine { "text": "messy brain dump" }
-    FastAPI->>ADK: Pass unstructured text
-    ADK->>Gemini: Prompt + Pydantic JSON Schema
-    Gemini-->>ADK: Return formatted JSON ticket
-    ADK-->>FastAPI: Parse to Python Object
-    FastAPI-->>User/Webhook: Return 200 OK (Structured Agile Ticket)
+| Field | Type | Description |
+|---|---|---|
+| `title` | `string` | Clear, concise ticket title |
+| `ticket_type` | `Feature \| Bug \| Chore \| Spike` | Category of work |
+| `user_story` | `string` | Standard "As a... I want... so that..." format |
+| `acceptance_criteria` | `string[]` | Testable done conditions |
+| `edge_cases` | `string[]` | Error states and UX traps to handle |
+| `complexity_estimate` | `XS \| S \| M \| L \| XL` | T-shirt size effort estimate |
 
+---
 
-🛠️ Local Setup & Installation
+## Local setup
 
-1. Prerequisites
+**Prerequisites:** Python 3.12+, a Gemini API key
 
-Python 3.12+
-
-A Google Gemini API Key
-
-2. Clone and Install
-
-git clone [https://github.com/yourusername/story-weaver.git](https://github.com/yourusername/story-weaver.git)
+```bash
+git clone https://github.com/yourusername/story-weaver.git
 cd story-weaver
 
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
 pip install -r requirements.txt
 
+export GOOGLE_API_KEY="your_api_key_here"   # Windows: set GOOGLE_API_KEY=your_api_key_here
+python server.py
+```
 
-3. Run the Server
+Server runs at `http://localhost:8080`
 
-export GOOGLE_API_KEY="your_api_key_here"
-uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+---
 
+## Deploy to Cloud Run
 
-☁️ Deployment to Google Cloud Run
-
-Deploy this agent directly via the gcloud CLI:
-
+```bash
 gcloud run deploy story-weaver-agent \
   --source . \
   --region us-central1 \
   --allow-unauthenticated \
   --set-env-vars="GOOGLE_API_KEY=your_api_key_here"
+```
 
+---
 
-💻 Usage Example
+## Usage
 
-Request:
+**Linux / macOS**
+```bash
+curl -X POST "https://YOUR_SERVICE_URL/refine" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "We need Apple Pay. Also show specific decline reasons instead of generic errors."}'
+```
 
-curl -X POST "http://localhost:8080/refine" \
-     -H "Content-Type: application/json" \
-     -d '{"text": "We need to let people pay with Apple Pay. Also if their card gets declined don’t just show a generic error, tell them exactly what failed so support stops getting tickets."}'
+**Windows CMD**
+```cmd
+curl -X POST "https://YOUR_SERVICE_URL/refine" -H "Content-Type: application/json" -d "{\"text\": \"We need Apple Pay. Also show specific decline reasons instead of generic errors.\"}"
+```
 
-
-Expected JSON Response:
-
+**Example response**
+```json
 {
-  "title": "Implement Apple Pay Integration with Specific Error Handling",
+  "title": "Implement Apple Pay with Specific Decline Error Handling",
   "ticket_type": "Feature",
-  "user_story": "As a customer, I want to use Apple Pay at checkout so that I can complete my purchase quickly and securely.",
+  "user_story": "As a customer, I want to pay with Apple Pay and see specific error messages on decline so that I can resolve payment issues without contacting support.",
   "acceptance_criteria": [
-    "Apple Pay button is visible and functional on the checkout page.",
-    "Payment processing successfully routes through the Apple Pay API.",
-    "If a transaction is declined, the UI displays the specific failure reason (e.g., 'Insufficient Funds', 'Card Expired') instead of a generic error."
+    "Apple Pay button appears on checkout for supported devices.",
+    "Successful payments are processed and confirmed.",
+    "Declined transactions show a specific reason (e.g. 'Insufficient Funds', 'Card Expired')."
   ],
   "edge_cases": [
-    "User device does not support Apple Pay (hide/disable button).",
-    "Network timeout during the Apple Pay authorization handshake.",
-    "Apple Pay returns an undocumented error code (fallback to generic error and log to Sentry)."
+    "Device does not support Apple Pay — hide the button.",
+    "Network timeout during authorization handshake.",
+    "Undocumented error code returned — fallback to generic message and log the error."
   ],
   "complexity_estimate": "M"
 }
+```
+
+Interactive API docs available at `/docs`.
